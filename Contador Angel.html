@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Panel con Gráfica</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      background: #0c0c0c;
+      color: #eaeaea;
+      font-family: 'Segoe UI', sans-serif;
+      max-width: 800px;
+      margin: auto;
+      padding: 2rem;
+    }
+    h2 {
+      text-align: center;
+      color: #00e5ff;
+      margin-bottom: 1rem;
+    }
+    .total-global {
+      text-align: center;
+      font-size: 1.2rem;
+      color: #26c6da;
+      margin-bottom: 2rem;
+      font-weight: bold;
+    }
+    form {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 2rem;
+    }
+    input, button {
+      padding: 0.6rem;
+      border-radius: 8px;
+      border: none;
+      font-size: 1rem;
+    }
+    input {
+      flex: 1;
+      background: #121212;
+      color: #fff;
+    }
+    button {
+      background: #0288d1;
+      color: white;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    button:hover {
+      background: #03a9f4;
+    }
+
+    .field {
+      background: #151515;
+      border-radius: 10px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+      border: 1px solid #222;
+    }
+    .field h3 {
+      margin: 0 0 1rem 0;
+      color: #4dd0e1;
+    }
+    .buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 0.5rem;
+    }
+    .btn {
+      flex: 1 1 48%;
+      padding: 0.5rem;
+      font-weight: bold;
+      border-radius: 6px;
+      transition: all 0.2s ease;
+    }
+    .sumar { background: #2e7d32; color: white; }
+    .sumar:hover { background: #43a047; }
+    .restar { background: #ef6c00; color: white; }
+    .restar:hover { background: #fb8c00; }
+    .reset { background: #c62828; color: white; }
+    .reset:hover { background: #e53935; }
+    .eliminar { background: #424242; color: white; }
+    .eliminar:hover { background: #616161; }
+
+    .grafica-container {
+      margin-top: 2rem;
+      background: #1a1a1a;
+      border-radius: 10px;
+      border: 1px solid #333;
+    }
+    .grafica-header {
+      padding: 1rem;
+      cursor: pointer;
+      font-weight: bold;
+      display: flex;
+      justify-content: space-between;
+      color: #4dd0e1;
+    }
+    .grafica-body {
+      display: none;
+      padding: 1rem;
+    }
+    .grafica-buttons {
+      margin-top: 1rem;
+      display: flex;
+      gap: 1rem;
+    }
+  </style>
+</head>
+<body>
+
+<h2>Panel de Puntos</h2>
+<div class="total-global" id="totalGlobal">Total global: 0.000</div>
+
+<form id="addForm">
+  <input type="text" id="fieldName" placeholder="Nombre del Perfil" required />
+  <button type="submit">Añadir</button>
+</form>
+
+<div id="fieldsContainer"></div>
+
+<div class="grafica-container">
+  <div class="grafica-header" onclick="toggleGrafica()">
+    Gráfica Total Global <span id="graficaToggle">+</span>
+  </div>
+  <div class="grafica-body" id="graficaBody">
+    <canvas id="graficaCanvas" height="200"></canvas>
+    <div class="grafica-buttons">
+      <button onclick="borrarHistorialGrafica()" class="btn reset">Borrar Historial</button>
+      <button onclick="descargarCSV()" class="btn sumar">Descargar CSV</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let campos = JSON.parse(localStorage.getItem('camposV4')) || [];
+let historialGlobal = JSON.parse(localStorage.getItem('historialGlobal')) || [];
+
+const ctx = document.getElementById('graficaCanvas').getContext('2d');
+let chart = new Chart(ctx, {
+  type: 'line',
+  data: {
+    labels: historialGlobal.map(e => e.fecha),
+    datasets: [{
+      label: 'Total Global',
+      data: historialGlobal.map(e => e.valor),
+      borderColor: '#00e5ff',
+      fill: false,
+      tension: 0.3,
+      pointRadius: 3,
+    }]
+  },
+  options: {
+    animation: {
+      duration: 1000,
+      easing: 'easeOutQuart'
+    },
+    scales: {
+      y: {
+        beginAtZero: true,
+        ticks: { color: '#ccc' },
+        grid: { color: '#333' }
+      },
+      x: {
+        ticks: { color: '#ccc' },
+        grid: { display: false }
+      }
+    },
+    plugins: {
+      legend: {
+        labels: { color: '#ccc' }
+      }
+    }
+  }
+});
+
+function toggleGrafica() {
+  const body = document.getElementById('graficaBody');
+  const toggle = document.getElementById('graficaToggle');
+  body.style.display = body.style.display === 'none' ? 'block' : 'none';
+  toggle.textContent = body.style.display === 'block' ? '−' : '+';
+}
+
+function actualizarGrafica(valor) {
+  const fecha = new Date().toLocaleString();
+  historialGlobal.push({ fecha, valor });
+  localStorage.setItem('historialGlobal', JSON.stringify(historialGlobal));
+
+  chart.data.labels = historialGlobal.map(e => e.fecha);
+  chart.data.datasets[0].data = historialGlobal.map(e => e.valor);
+  chart.update();
+}
+
+function borrarHistorialGrafica() {
+  if (confirm("¿Seguro que quieres borrar el historial de la gráfica?")) {
+    historialGlobal = [];
+    localStorage.setItem('historialGlobal', JSON.stringify(historialGlobal));
+    chart.data.labels = [];
+    chart.data.datasets[0].data = [];
+    chart.update();
+  }
+}
+
+function descargarCSV() {
+  const csv = "Fecha,Total Global\n" + historialGlobal.map(e => `${e.fecha},${e.valor}`).join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = "historial_global.csv";
+  link.click();
+}
+
+function guardar() {
+  localStorage.setItem('camposV4', JSON.stringify(campos));
+  actualizarTotalGlobal();
+}
+
+function actualizarTotalGlobal() {
+  const total = campos.reduce((sum, c) => sum + c.total, 0);
+  document.getElementById('totalGlobal').textContent = `Total global: ${total.toFixed(3)}`;
+  actualizarGrafica(total);
+}
+
+function crearCampoUI(campo) {
+  const div = document.createElement('div');
+  div.className = 'field';
+
+  const titulo = document.createElement('h3');
+  titulo.textContent = campo.nombre;
+
+  const input = document.createElement('input');
+  input.type = 'number';
+  input.step = '0.001';
+  input.placeholder = 'Cantidad';
+
+  const total = document.createElement('div');
+  total.textContent = `Total: ${campo.total.toFixed(3)}`;
+  total.style.marginTop = '0.5rem';
+
+  const sumar = document.createElement('button');
+  sumar.textContent = 'Sumar';
+  sumar.className = 'btn sumar';
+  sumar.onclick = () => {
+    const val = parseFloat(input.value);
+    if (!isNaN(val)) {
+      campo.total += val;
+      input.value = '';
+      total.textContent = `Total: ${campo.total.toFixed(3)}`;
+      guardar();
+    }
+  };
+
+  const restar = document.createElement('button');
+  restar.textContent = 'Restar';
+  restar.className = 'btn restar';
+  restar.onclick = () => {
+    const val = parseFloat(input.value);
+    if (!isNaN(val)) {
+      campo.total -= val;
+      input.value = '';
+      total.textContent = `Total: ${campo.total.toFixed(3)}`;
+      guardar();
+    }
+  };
+
+  const reset = document.createElement('button');
+  reset.textContent = 'Reset';
+  reset.className = 'btn reset';
+  reset.onclick = () => {
+    if (confirm(`¿Resetear campo "${campo.nombre}"?`)) {
+      campo.total = 0;
+      total.textContent = `Total: 0.000`;
+      guardar();
+    }
+  };
+
+  const eliminar = document.createElement('button');
+  eliminar.textContent = 'Eliminar';
+  eliminar.className = 'btn eliminar';
+  eliminar.onclick = () => {
+    if (confirm(`¿Eliminar campo "${campo.nombre}"?`)) {
+      campos = campos.filter(c => c !== campo);
+      guardar();
+      renderizarCampos();
+    }
+  };
+
+  const botones = document.createElement('div');
+  botones.className = 'buttons';
+  botones.append(sumar, restar, reset, eliminar);
+
+  div.append(titulo, input, total, botones);
+  return div;
+}
+
+function renderizarCampos() {
+  const cont = document.getElementById('fieldsContainer');
+  cont.innerHTML = '';
+  campos.forEach(campo => cont.appendChild(crearCampoUI(campo)));
+  actualizarTotalGlobal();
+}
+
+document.getElementById('addForm').onsubmit = (e) => {
+  e.preventDefault();
+  const nombre = document.getElementById('fieldName').value.trim();
+  if (!nombre) return;
+  if (campos.some(c => c.nombre.toLowerCase() === nombre.toLowerCase())) {
+    alert('Ese nombre ya existe.');
+    return;
+  }
+  const nuevo = { nombre, total: 0 };
+  campos.push(nuevo);
+  guardar();
+  renderizarCampos();
+  e.target.reset();
+};
+
+renderizarCampos();
+toggleGrafica(); // Oculta la gráfica inicialmente
+</script>
+</body>
+</html>
